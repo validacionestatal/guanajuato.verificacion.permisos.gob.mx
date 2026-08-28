@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERIFICACION DE PERMISOS PROVISIONALES</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        
+        .loader {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #1e40af;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.5;
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .header-gradient {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
+        }
+        
+        .govt-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .captcha-box {
+            border: 2px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            background: #f9fafb;
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+        }
+        
+        .captcha-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #6b7280;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .captcha-checkbox.checked {
+            background: #1e40af;
+            border-color: #1e40af;
+        }
+        
+        .captcha-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .result-card {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .news-item {
+            border-left: 4px solid #1e40af;
+            transition: all 0.3s;
+        }
+        
+        .news-item:hover {
+            border-left-color: #3b82f6;
+            background: #f9fafb;
+        }
+        
+        .info-banner {
+            background: #dbeafe;
+            border-left: 4px solid #1e40af;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
+            padding: 20px 24px;
+            border-radius: 16px 16px 0 0;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+
+        .modal-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+
+        .modal-close:hover {
+            background: rgba(255,255,255,0.4);
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-field {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .modal-field:last-child {
+            border-bottom: none;
+        }
+
+        .modal-field .label {
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .modal-field .value {
+            color: #1f2937;
+            font-weight: 500;
+            text-align: right;
+        }
+
+        .modal-field .value.success {
+            color: #16a34a;
+        }
+
+        .modal-field .value.danger {
+            color: #dc2626;
+        }
+
+        .modal-badge {
+            display: inline-block;
+            background: #dcfce7;
+            color: #16a34a;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .modal-badge.danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="fixed inset-0 flex items-center justify-center z-50 bg-white">
+        <div class="text-center">
+            <div class="loader mx-auto mb-4"></div>
+            <p class="text-gray-700 text-xl font-semibold">Cargando sistema...</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" style="display: none;">
+        <!-- Header -->
+        <header class="header-gradient text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <!-- Logo image -->
+                        <div class="w-16 h-16 bg-white rounded-lg flex items-center justify-center p-1 overflow-hidden">
+                            <img src="https://www.plataforma-estatal-permisos.com/assets/img/guanajuato.jpeg" alt="Gobierno de Guanajuato" class="w-full h-full object-contain">
+                        </div>
+                        <div>
+                            <h1 class="text-3xl font-bold">VERIFICACION</h1>
+                            <p class="text-blue-100 text-sm">DE PERMISOS PROVISIONALES</p>
+                        </div>
+                    </div>
+                    <div class="hidden md:block text-right">
+                        <p class="text-sm text-blue-100">Gobierno del estado de Guanajuato</p>
+                        <p class="text-xs text-blue-200">Secretaría de Hacienda</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Container -->
+        <div class="container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Main Card -->
+                <div class="lg:col-span-2">
+                    <div class="govt-card rounded-lg p-6 mb-6 fade-in">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Verificación de Permisos Provisionales</h2>
+                        <p class="text-gray-600 mb-6">Consulta la validez y autenticidad de permisos provisionales emitidos por esta dependencia</p>
+
+                        <!-- Important Notice -->
+                        <div class="info-banner p-4 rounded-lg mb-6">
+                            <div class="flex gap-3">
+                                <svg class="w-6 h-6 text-blue-700 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/>
+                                </svg>
+                                <div class="text-sm">
+                                    <p class="font-semibold text-blue-900 mb-1">Información Importante</p>
+                                    <p class="text-blue-800">Este sistema permite verificar la autenticidad de permisos provisionales a través del Número de Serie (NIV) del vehículo. Los datos mostrados son de carácter oficial y están respaldados por la Secretaría de Hacienda.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search Form -->
+                        <div id="searchForm">
+                            <div class="mb-6">
+                                <label class="block text-gray-800 font-semibold mb-2">Ingresa el Número de Serie (NIV) del vehículo:</label>
+                                <input type="text" id="searchInput" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-700 focus:outline-none transition-all uppercase" placeholder="Ej: 3TMLU4EN7RM123456">
+                                <p class="text-xs text-gray-500 mt-1">* Campo obligatorio</p>
+                            </div>
+
+                            <!-- Captcha -->
+                            <div class="mb-6">
+                                <label class="block text-gray-800 font-semibold mb-3">Verificación de seguridad:</label>
+                                <div class="captcha-box" onclick="toggleCaptcha()">
+                                    <div id="captchaCheckbox" class="captcha-checkbox"></div>
+                                    <span class="text-gray-700 text-sm">No soy un robot</span>
+                                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24'%3E%3Cpath fill='%234285f4' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'/%3E%3C/svg%3E" alt="captcha">
+                                </div>
+                            </div>
+
+                            <!-- Buttons -->
+                            <div class="flex gap-4">
+                                <button onclick="searchPermit()" class="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all">
+                                    <span class="flex items-center justify-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                        </svg>
+                                        Buscar
+                                    </span>
+                                </button>
+                                <button onclick="clearForm()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-all">
+                                    <span class="flex items-center justify-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                        Limpiar
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="lg:col-span-1">
+                    <!-- Contact Info -->
+                    <div class="govt-card rounded-lg p-6 mb-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-700" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                            </svg>
+                            Contacto
+                        </h3>
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <p class="font-semibold text-gray-700">Centro de Atención</p>
+                                <p class="text-blue-700 font-semibold">800-46-32-436</p>
+                                <p class="text-gray-600 text-xs">Lunes a Viernes 8:00 - 18:00 hrs</p>
+                            </div>
+                            <div class="border-t pt-3">
+                                <p class="font-semibold text-gray-700">Atención en Guanajuato</p>
+                                <p class="text-blue-700 font-semibold">55-5209-1111</p>
+                            </div>
+                            <div class="border-t pt-3">
+                                <p class="font-semibold text-gray-700">Emergencias</p>
+                                <p class="text-blue-700 font-semibold">911</p>
+                            </div>
+                            <div class="border-t pt-3">
+                                <p class="font-semibold text-gray-700">Correo electrónico</p>
+                                <p class="text-blue-700 text-xs break-all">contacto@guanajuato.gob.mx</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- News Section -->
+                    <div class="govt-card rounded-lg p-6 mb-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-700" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z"/>
+                                <path d="M15 7h1a2 2 0 012 2v5.5a1.5 1.5 0 01-3 0V7z"/>
+                            </svg>
+                            Noticias y Avisos
+                        </h3>
+                        <div class="space-y-4">
+                            <div class="news-item pl-3 py-2">
+                                <p class="text-xs text-gray-500 mb-1">28 Oct 2025</p>
+                                <p class="text-sm font-semibold text-gray-800 mb-1">Nuevos permisos digitales disponibles</p>
+                                <p class="text-xs text-gray-600">Ya puedes obtener tu permiso en formato digital desde la app oficial.</p>
+                            </div>
+                            <div class="news-item pl-3 py-2">
+                                <p class="text-xs text-gray-500 mb-1">15 Oct 2025</p>
+                                <p class="text-sm font-semibold text-gray-800 mb-1">Descuentos en renovación</p>
+                                <p class="text-xs text-gray-600">Aprovecha el 20% de descuento en renovaciones hasta el 30 de noviembre.</p>
+                            </div>
+                            <div class="news-item pl-3 py-2">
+                                <p class="text-xs text-gray-500 mb-1">01 Oct 2025</p>
+                                <p class="text-sm font-semibold text-gray-800 mb-1">Nuevos módulos de atención</p>
+                                <p class="text-xs text-gray-600">Se habilitaron 5 nuevos módulos para trámites de permisos.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div id="resultModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📄 Información del Permiso</h2>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Content will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white mt-12">
+            <div class="container mx-auto px-4 py-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
+                    <div>
+                        <h4 class="font-bold mb-3">VERIFICACION DE PERMISOS</h4>
+                        <p class="text-sm text-gray-300">Oficina de Hacienda Virtual - Gobierno del Estado de Guanajuato</p>
+                        <p class="text-xs text-gray-400 mt-2">Secretaría de Hacienda y Crédito Público</p>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-3">Información</h4>
+                        <ul class="text-sm space-y-1 text-gray-300">
+                            <li><a href="#" class="hover:text-white">Acerca de</a></li>
+                            <li><a href="#" class="hover:text-white">Aviso de privacidad</a></li>
+                            <li><a href="#" class="hover:text-white">Términos de uso</a></li>
+                            <li><a href="#" class="hover:text-white">Accesibilidad</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-3">Síguenos</h4>
+                        <div class="flex gap-3">
+                            <a href="#" class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700">
+                                <span class="text-xs">f</span>
+                            </a>
+                            <a href="#" class="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center hover:bg-blue-500">
+                                <span class="text-xs">t</span>
+                            </a>
+                            <a href="#" class="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700">
+                                <span class="text-xs">y</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-gray-700 pt-4 text-center text-sm text-gray-400">
+                    <p>&copy; 2025 Gobierno de México. Todos los derechos reservados.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================
+        // BASE DE DATOS DE PERMISOS PROVISIONALES
+        // Agrega aquí los datos de los permisos
+        // ============================================
+        const permitsDB = [
+            {
+                folio: "PERM-2025-001",
+                fechaExpedicion: "15/01/2025",
+                fechaVencimiento: "15/07/2025",
+                marca: "Toyota",
+                linea: "Hilux",
+                año: "2024",
+                numeroSerie: "3TMLU4EN7RM123456",
+                propietario: "JUAN CARLOS PEREZ GONZALEZ"
+            },
+            {
+                folio: "PERM-2025-002",
+                fechaExpedicion: "01/02/2025",
+                fechaVencimiento: "01/08/2025",
+                marca: "Ford",
+                linea: "F-150",
+                año: "2023",
+                numeroSerie: "1FTFW1RG0PFA98765",
+                propietario: "MARIA FERNANDA LOPEZ SANCHEZ"
+            },
+            {
+                folio: "PERM-2025-003",
+                fechaExpedicion: "10/03/2025",
+                fechaVencimiento: "10/09/2025",
+                marca: "Chevrolet",
+                linea: "Silverado",
+                año: "2024",
+                numeroSerie: "1GCVKREC9NZ456789",
+                propietario: "ROBERTO GARCIA MARTINEZ"
+            },
+            {
+                folio: "PERM-2025-004",
+                fechaExpedicion: "20/04/2025",
+                fechaVencimiento: "20/10/2025",
+                marca: "Nissan",
+                linea: "Frontier",
+                año: "2024",
+                numeroSerie: "1N6AD0CW3RC321654",
+                propietario: "ANA PATRICIA RAMIREZ RUIZ"
+            },
+            {
+                folio: "PERM-2025-005",
+                fechaExpedicion: "05/05/2025",
+                fechaVencimiento: "05/11/2025",
+                marca: "Ram",
+                linea: "1500",
+                año: "2025",
+                numeroSerie: "3C6UR5CL7SG789123",
+                propietario: "JOSE MANUEL HERNANDEZ DIAZ"
+            },
+            {
+                folio: "PERM-2026-006",
+                fechaExpedicion: "19/08/2026",
+                fechaVencimiento: "19/09/2026",
+                marca: "KAWASAKI",
+                linea: "VN1500 VULCAN",
+                año: "1998",
+                numeroSerie: "JKBVNAE13WA077744",
+                propietario: "CRISOFORO FRANCO GODINES"
+            },
+            {
+                folio: "PERM-2026-056",
+                fechaExpedicion: "25/07/2026",
+                fechaVencimiento: "25/08/2026",
+                marca: "PEUGEOT",
+                linea: "SEDAN",
+                año: "2006",
+                numeroSerie: "9362AKFW26B002609",
+                propietario: "ERIK ALFREDO RANGEL RAMIREZ"
+            },
+             {
+                folio: "PERM-2026-334",
+                fechaExpedicion: "25/07/2026",
+                fechaVencimiento: "25/08/2026",
+                marca: "NISSAN",
+                linea: "TSURU",
+                año: "1989",
+                numeroSerie: "9RLB1201088",
+                propietario: "JORGE MANUEL AGUILAR MALDONADO"
+            },
+            {
+                folio: "PERM-2026-009",
+                fechaExpedicion: "31/07/2026",
+                fechaVencimiento: "31/08/2026",
+                marca: "ITALIKA",
+                linea: "D125",
+                año: "2024",
+                numeroSerie: "3SCK19AB6R1001984",
+                propietario: "CHRISTIAN DAVID NUÑEZ PEREZ"
+            },
+             {
+                folio: "PERM-2026-342",
+                fechaExpedicion: "28/08/2026",
+                fechaVencimiento: "28/09/2026",
+                marca: "AMACSA",
+                linea: "REMOLQUE AGRICOLA",
+                año: "2026",
+                numeroSerie: "CB82X16SRPM3T",
+                propietario: "ANA KAREN COLOMBO VALENCIA"
+            }
+        ];
+
+        let captchaVerified = false;
+
+        // ============================================
+        // FUNCIONES DEL SISTEMA
+        // ============================================
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+            }, 1500);
+
+            const savedValue = localStorage.getItem('searchValue');
+            const savedCaptcha = localStorage.getItem('captchaVerified');
+            
+            if (savedValue) {
+                document.getElementById('searchInput').value = savedValue;
+            }
+            if (savedCaptcha === 'true') {
+                captchaVerified = true;
+                document.getElementById('captchaCheckbox').classList.add('checked');
+            }
+        });
+
+        function toggleCaptcha() {
+            captchaVerified = !captchaVerified;
+            const checkbox = document.getElementById('captchaCheckbox');
+            
+            if (captchaVerified) {
+                checkbox.classList.add('checked');
+                localStorage.setItem('captchaVerified', 'true');
+            } else {
+                checkbox.classList.remove('checked');
+                localStorage.setItem('captchaVerified', 'false');
+            }
+        }
+
+        function searchPermit() {
+            const searchValue = document.getElementById('searchInput').value.trim().toUpperCase();
+            
+            if (!searchValue) {
+                alert('Por favor, ingresa un Número de Serie (NIV)');
+                return;
+            }
+            
+            if (!captchaVerified) {
+                alert('Por favor, verifica el captcha de seguridad');
+                return;
+            }
+            
+            localStorage.setItem('searchValue', searchValue);
+            
+            // Buscar por número de serie (NIV)
+            const permit = permitsDB.find(p => p.numeroSerie === searchValue);
+            openModal(permit);
+        }
+
+        function openModal(permit) {
+            const modal = document.getElementById('resultModal');
+            const body = document.getElementById('modalBody');
+            
+            if (permit) {
+                body.innerHTML = `
+                    <div class="mb-4">
+                        <span class="modal-badge">✅ Permiso Válido</span>
+                    </div>
+                    <div class="modal-field">
+                        <span class="label">Folio</span>
+                        <span class="value font-mono">${permit.folio}</span>
+                    </div>
+                    <div class="modal-field">
+                        <span class="label">Fecha de Expedición</span>
+                        <span class="value">${permit.fechaExpedicion}</span>
+                    </div>
+                    <div class="modal-field">
+                        <span class="label">Fecha de Vencimiento</span>
+                        <span class="value success">${permit.fechaVencimiento}</span>
+                    </div>
+                    <div class="modal-field">
+                        <span class="label">Propietario</span>
+                        <span class="value">${permit.propietario}</span>
+                    </div>
+                    <div class="modal-field">
+                        <span class="label">Marca</span>
+                        <span class="value">${permit.marca}</span>
+                    </div>
+                    <div class="modal-field">
+                        <span class="label">Línea</span>
+                        <span class="value">${permit.linea}</span>
+                    </div>
+                    <div class="modal-field">
+                        <span class="label">Año</span>
+                        <span class="value">${permit.año}</span>
+                    </div>
+                    <div class="modal-field">
+                        <span class="label">Número de Serie (NIV)</span>
+                        <span class="value font-mono">${permit.numeroSerie}</span>
+                    </div>
+                    <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-sm text-blue-900">
+                            <strong>Folio de consulta:</strong> ${Date.now()}<br>
+                            <strong>Fecha y hora:</strong> ${new Date().toLocaleString('es-MX')}
+                        </p>
+                    </div>
+                `;
+            } else {
+                body.innerHTML = `
+                    <div class="mb-4">
+                        <span class="modal-badge danger">❌ Permiso No Encontrado</span>
+                    </div>
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <p class="text-sm text-red-800">
+                            <strong>No se encontró el registro:</strong> El Número de Serie (NIV) proporcionado no corresponde a ningún permiso en nuestra base de datos.
+                        </p>
+                    </div>
+                    <h4 class="font-bold text-gray-800 mb-3">Posibles causas:</h4>
+                    <ul class="space-y-2 text-sm text-gray-700 mb-4">
+                        <li class="flex items-start gap-2">
+                            <span class="text-red-600 font-bold">•</span>
+                            <span>El número ingresado es incorrecto o contiene errores</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-red-600 font-bold">•</span>
+                            <span>El permiso no ha sido expedido por esta dependencia</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-red-600 font-bold">•</span>
+                            <span>El documento puede ser apócrifo o falso</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-red-600 font-bold">•</span>
+                            <span>El permiso ha expirado o fue cancelado</span>
+                        </li>
+                    </ul>
+                    <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+                        <p class="text-sm text-yellow-900 font-semibold mb-2">⚠️ Recomendaciones:</p>
+                        <p class="text-sm text-yellow-800">
+                            Si considera que hay un error, verifique los datos ingresados. 
+                            Si el problema persiste, acuda al módulo de atención más cercano o comuníquese 
+                            al <strong>800-46-32-436</strong>.
+                        </p>
+                    </div>
+                    <div class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <p class="text-sm text-gray-700">
+                            <strong>Folio de consulta:</strong> ${Date.now()}<br>
+                            <strong>Fecha y hora:</strong> ${new Date().toLocaleString('es-MX')}
+                        </p>
+                    </div>
+                `;
+            }
+            
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('resultModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Cerrar modal al hacer clic en el overlay
+        document.getElementById('resultModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeModal();
+            }
+        });
+
+        // Cerrar modal con tecla ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        function clearForm() {
+            document.getElementById('searchInput').value = '';
+            captchaVerified = false;
+            document.getElementById('captchaCheckbox').classList.remove('checked');
+            closeModal();
+            
+            localStorage.removeItem('searchValue');
+            localStorage.removeItem('captchaVerified');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.toUpperCase();
+                    localStorage.setItem('searchValue', e.target.value);
+                });
+                
+                // Buscar con Enter
+                searchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        searchPermit();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
